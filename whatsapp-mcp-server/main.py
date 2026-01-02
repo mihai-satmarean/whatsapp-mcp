@@ -14,6 +14,18 @@ from whatsapp import (
     send_audio_message as whatsapp_audio_voice_message,
     download_media as whatsapp_download_media
 )
+from contacts import (
+    get_all_contacts,
+    get_contact,
+    get_all_groups,
+    get_group_info,
+    get_conversation_topics,
+    get_active_contacts,
+    get_dormant_contacts,
+    get_interesting_topics,
+    add_interesting_topic,
+    get_topic_alerts
+)
 
 # Initialize FastMCP server
 mcp = FastMCP("whatsapp")
@@ -245,6 +257,165 @@ def download_media(message_id: str, chat_jid: str) -> Dict[str, Any]:
             "success": False,
             "message": "Failed to download media"
         }
+
+# ============================================================
+# CONTACT SCANNER TOOLS
+# ============================================================
+
+@mcp.tool()
+def list_all_contacts(
+    include_metrics: bool = True,
+    include_insights: bool = True,
+    limit: int = 100,
+    offset: int = 0
+) -> List[Dict[str, Any]]:
+    """Get all contacts from the contact scanner database with optional metrics and insights.
+    
+    Args:
+        include_metrics: Include conversation metrics (default True)
+        include_insights: Include relationship insights (default True)
+        limit: Maximum number of contacts to return (default 100)
+        offset: Offset for pagination (default 0)
+    
+    Returns:
+        List of contacts with their details, metrics, and insights
+    """
+    return get_all_contacts(include_metrics, include_insights, limit, offset)
+
+@mcp.tool()
+def get_contact_details(jid: str) -> Dict[str, Any]:
+    """Get detailed information about a specific contact including metrics and insights.
+    
+    Args:
+        jid: The JID of the contact
+    
+    Returns:
+        Contact details with metrics and insights, or None if not found
+    """
+    contact = get_contact(jid)
+    return contact if contact else {"error": "Contact not found"}
+
+@mcp.tool()
+def list_all_groups(
+    include_members: bool = False,
+    limit: int = 100,
+    offset: int = 0
+) -> List[Dict[str, Any]]:
+    """Get all WhatsApp groups from the contact scanner database.
+    
+    Args:
+        include_members: Include member lists for each group (default False)
+        limit: Maximum number of groups to return (default 100)
+        offset: Offset for pagination (default 0)
+    
+    Returns:
+        List of groups with their details and optionally member lists
+    """
+    return get_all_groups(include_members, limit, offset)
+
+@mcp.tool()
+def get_group_details(jid: str, include_members: bool = True) -> Dict[str, Any]:
+    """Get detailed information about a specific WhatsApp group including members.
+    
+    Args:
+        jid: The JID of the group
+        include_members: Include member list (default True)
+    
+    Returns:
+        Group details with member list, or None if not found
+    """
+    group = get_group_info(jid, include_members)
+    return group if group else {"error": "Group not found"}
+
+@mcp.tool()
+def list_conversation_topics(
+    chat_jid: Optional[str] = None,
+    keyword: Optional[str] = None,
+    limit: int = 50,
+    min_mentions: int = 2
+) -> List[Dict[str, Any]]:
+    """Get conversation topics tracked across chats.
+    
+    Args:
+        chat_jid: Optional - filter by specific chat JID
+        keyword: Optional - filter by keyword pattern
+        limit: Maximum number of topics to return (default 50)
+        min_mentions: Minimum mention count (default 2)
+    
+    Returns:
+        List of topics with mention counts, importance scores, and last mentioned dates
+    """
+    return get_conversation_topics(chat_jid, keyword, limit, min_mentions)
+
+@mcp.tool()
+def list_active_contacts(days: int = 30, limit: int = 100) -> List[Dict[str, Any]]:
+    """Get contacts with recent activity.
+    
+    Args:
+        days: Number of days to look back (default 30)
+        limit: Maximum number of contacts to return (default 100)
+    
+    Returns:
+        List of active contacts ordered by last message date
+    """
+    return get_active_contacts(days, limit)
+
+@mcp.tool()
+def list_dormant_contacts(days: int = 90, limit: int = 100) -> List[Dict[str, Any]]:
+    """Get contacts without recent activity (for reconnection opportunities).
+    
+    Args:
+        days: Number of days threshold (default 90)
+        limit: Maximum number of contacts to return (default 100)
+    
+    Returns:
+        List of dormant contacts ordered by days since last contact
+    """
+    return get_dormant_contacts(days, limit)
+
+@mcp.tool()
+def list_interesting_topics() -> List[Dict[str, Any]]:
+    """Get user-defined interesting topics being tracked.
+    
+    Returns:
+        List of interesting topics with their categories and importance scores
+    """
+    return get_interesting_topics()
+
+@mcp.tool()
+def add_topic_to_track(
+    keyword: str,
+    category: Optional[str] = None,
+    importance: float = 1.0,
+    notify_on_mention: bool = False,
+    notes: Optional[str] = None
+) -> Dict[str, Any]:
+    """Add a new interesting topic to track across conversations.
+    
+    Args:
+        keyword: The keyword or phrase to track
+        category: Optional category (e.g., 'business', 'personal', 'tech')
+        importance: Importance weight (0.0 to 10.0, default 1.0)
+        notify_on_mention: Whether to create alerts when mentioned (default False)
+        notes: Optional notes about this topic
+    
+    Returns:
+        Success status and message
+    """
+    return add_interesting_topic(keyword, category, importance, notify_on_mention, notes)
+
+@mcp.tool()
+def list_topic_alerts(acknowledged: bool = False, limit: int = 100) -> List[Dict[str, Any]]:
+    """Get alerts for mentions of interesting topics.
+    
+    Args:
+        acknowledged: Whether to show acknowledged alerts (default False - shows new only)
+        limit: Maximum number of alerts to return (default 100)
+    
+    Returns:
+        List of topic alerts with context and importance
+    """
+    return get_topic_alerts(acknowledged, limit)
 
 if __name__ == "__main__":
     # Initialize and run the server
